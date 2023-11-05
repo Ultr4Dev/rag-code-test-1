@@ -11,9 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from databases import Database
 from openai.embeddings_utils import get_embedding, cosine_similarity
-import dotenv
 
-dotenv.load_dotenv(".env")
 app = FastAPI()
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 # CORS settings

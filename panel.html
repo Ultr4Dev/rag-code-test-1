@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Sh4r3</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- and it's easy to individually load additional languages -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+    integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>hljs.highlightAll();</script>
+  <style>
+    .fakeimg {
+      height: 200px;
+      background: #aaa;
+    }
+
+    div.code {
+      white-space: pre;
+    }
+  </style>
+
+  <script>
+    async function submitForm(e) {
+      e.preventDefault();
+      const form = document.getElementById('searchForm');
+      const formData = new FormData(form);
+      const query = formData.get('query');
+      const url = `http://localhost:30000/code/search?code_description=${query}&n=10`;
+
+      try {
+        const response = await fetch(url, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        displayResponse(data);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    async function fetchFileContent(fileLink) {
+      try {
+        const response = await fetch(fileLink);
+        const fileContent = await response.text();
+        return fileContent;
+      } catch (error) {
+        console.error(`Error fetching file: ${fileLink}`, error);
+        return null;
+      }
+    }
+
+    async function displayResponse(data) {
+      const responseContainer = document.createElement('div');
+      responseContainer.classList.add('container', 'mt-3');
+
+      for (const item of data) {
+        const codeBlock = document.createElement('div');
+
+        codeBlock.classList.add('bg-light', 'p-3', 'code');
+
+        const fileContent = await fetchFileContent(item.file_link);
+        if (fileContent) {
+          codeBlock.textContent = fileContent;
+        } else {
+          codeBlock.textContent = "Error loading file";
+          codeBlock.classList.add('text-danger');
+        }
+
+        const fileLink = document.createElement('a');
+        fileLink.href = item.file_link;
+        fileLink.textContent = item.file_link;
+        fileLink.classList.add('text-primary', 'd-block', 'mb-3');
+
+        const fileDesc = document.createElement('p');
+        fileDesc.textContent = item.code;
+        fileDesc.classList.add('text-primary', 'd-block', 'mb-3');
+
+        const copyButton = document.createElement('button');
+        copyButton.classList.add('btn', 'btn-primary', 'mb-3');
+        copyButton.textContent = "Copy";
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(fileContent);
+          alert("Code copied to clipboard!");
+        });
+
+        responseContainer.appendChild(fileLink);
+        responseContainer.appendChild(fileDesc);
+        responseContainer.appendChild(codeBlock);
+        responseContainer.appendChild(copyButton);
+      }
+
+      const resultContainer = document.getElementById('resultContainer');
+      // Remove previous result, if any
+      while (resultContainer.firstChild) {
+        resultContainer.firstChild.remove();
+      }
+      resultContainer.appendChild(responseContainer);
+      document.querySelectorAll('div.code').forEach(el => {
+        // then highlight each
+        hljs.highlightElement(el);
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <div data-include="header"></div>
+  <div class="container mt-5">
+    <div class="row">
+      <h2>Search</h2>
+      <form id="searchForm" onsubmit="submitForm(event);">
+        <input type="text" name="query" class="form-control b-3 mt-3" placeholder="Search" />
+        <input type="submit" class="form-control btn btn-primary b-3 mt-3" />
+      </form>
+    </div>
+  </div>
+  </div>
+  <div id="resultContainer" class="container mt-3"></div>
+  <div data-include="footer"></div>
+</body>
+
+</html>
+<script>
+  document.addEventListener('DOMContentLoaded', (event) => {
+    document.querySelectorAll('div.code').forEach(el => {
+      // then highlight each
+      hljs.highlightElement(el);
+    });
+  });
+</script>
+<script src="./templater.js"></script>

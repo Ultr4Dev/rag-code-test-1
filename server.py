@@ -25,8 +25,8 @@ app.add_middleware(
 )
 
 # Mount static and views directories
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/views", StaticFiles(directory="views"), name="views")
+app.mount("./static", StaticFiles(directory="static"), name="static")
+app.mount("./views", StaticFiles(directory="views"), name="views")
 
 
 @app.get("/")

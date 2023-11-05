@@ -13,7 +13,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from databases import Database
 from openai.embeddings_utils import get_embedding, cosine_similarity
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await database.connect()
+    # Call modified table creation function
+    await create_table_with_filenames()
+    yield
+    await database.disconnect()
+app = FastAPI(lifespan=lifespan)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 # CORS settings
 origins = ["*"]
@@ -28,15 +36,6 @@ app.add_middleware(
 # Mount static and views directories
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/views", StaticFiles(directory="views"), name="views")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await database.connect()
-    # Call modified table creation function
-    await create_table_with_filenames()
-    yield
-    await database.disconnect()
 
 
 @app.get("/")

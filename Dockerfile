@@ -11,7 +11,7 @@ WORKDIR /app
 # Copy the application files into the container
 COPY . /app
 
-RUN mkdir /app/static
+RUN mkdir static
 # Install required Python packages
 RUN pip install -r requirements.txt
 

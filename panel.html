@@ -34,7 +34,7 @@
       const form = document.getElementById('searchForm');
       const formData = new FormData(form);
       const query = formData.get('query');
-      const url = `http://localhost:30000/code/search?code_description=${query}&n=10`;
+      const url = `/code/search?code_description=${query}&n=10`;
 
       try {
         const response = await fetch(url, {
@@ -82,7 +82,7 @@
 
         const fileDesc = document.createElement('p');
         fileDesc.textContent = item.code;
-        fileDesc.classList.add('text-primary', 'd-block', 'mb-3');
+        fileDesc.classList.add('text', 'd-block', 'mb-3');
 
         const copyButton = document.createElement('button');
         copyButton.classList.add('btn', 'btn-primary', 'mb-3');
@@ -119,7 +119,7 @@
     <div class="row">
       <h2>Search</h2>
       <form id="searchForm" onsubmit="submitForm(event);">
-        <input type="text" name="query" class="form-control b-3 mt-3" placeholder="Search" />
+        <input type="text" name="query" class="form-control b-3 mt-3" placeholder="Search" required />
         <input type="submit" class="form-control btn btn-primary b-3 mt-3" />
       </form>
     </div>

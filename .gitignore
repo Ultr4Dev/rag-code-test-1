@@ -1,3 +1,5 @@
 llmsexp.py
 code.db
 static/*
+.env
+*.cpython*

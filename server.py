@@ -1,6 +1,7 @@
 import os
 import json
 from typing import Annotated
+from fastapi.concurrency import asynccontextmanager
 import openai
 import pandas as pd
 import numpy as np
@@ -27,6 +28,15 @@ app.add_middleware(
 # Mount static and views directories
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/views", StaticFiles(directory="views"), name="views")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await database.connect()
+    # Call modified table creation function
+    await create_table_with_filenames()
+    yield
+    await database.disconnect()
 
 
 @app.get("/")

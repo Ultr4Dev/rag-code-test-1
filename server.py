@@ -27,10 +27,12 @@ channel = connection.channel()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await database.connect()
+    await channel.queue_declare(queue=rabbitmq_queue, durable=True)
     # Call modified table creation function
     await create_table_with_filenames()
     yield
     await database.disconnect()
+    await connection.close()
 app = FastAPI(lifespan=lifespan)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 # CORS settings
@@ -47,6 +49,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/views", StaticFiles(directory="views"), name="views")
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/")
 async def read_index():
@@ -58,7 +62,7 @@ async def generate_code(prompt: str):
     # Generate code as before
 
     # Publish the generated code to RabbitMQ
-    channel.queue_declare(queue=rabbitmq_queue, durable=True)
+
     channel.basic_publish(
         exchange='',  # Use a direct exchange
         routing_key=rabbitmq_queue,
@@ -66,9 +70,21 @@ async def generate_code(prompt: str):
     )
 
     # Close the connection
-    connection.close()
 
     return {"message": "Code generation request sent to RabbitMQ."}
+
+
+@app.post("/queue/size")
+async def generate_code():
+    # Generate code as before
+
+    # Publish the generated code to RabbitMQ
+
+    size = channel.method.message_count
+
+    # Close the connection
+
+    return {"queue": size}
 
 
 @app.get("/add")

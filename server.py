@@ -20,7 +20,7 @@ rabbitmq_queue = 'code_generation_requests'
 credentials = pika.PlainCredentials("codegen_user", "codegen_pass")
 # Create a connection to RabbitMQ
 connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials))
+    pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials, virtual_host="/"))
 channel = connection.channel()
 
 
@@ -58,7 +58,7 @@ async def generate_code(prompt: str):
     # Generate code as before
 
     # Publish the generated code to RabbitMQ
-    channel.queue_declare(queue=rabbitmq_queue)
+    channel.queue_declare(queue=rabbitmq_queue, durable=True)
     channel.basic_publish(
         exchange='',  # Use a direct exchange
         routing_key=rabbitmq_queue,

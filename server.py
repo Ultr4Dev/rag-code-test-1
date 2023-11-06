@@ -12,6 +12,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from databases import Database
 from openai.embeddings_utils import get_embedding, cosine_similarity
+import pika
+
+# Define RabbitMQ connection parameters
+rabbitmq_host = os.environ.get("MSG_PRCCS_ADDR")
+rabbitmq_queue = 'code_generation_requests'
+
+# Create a connection to RabbitMQ
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host=rabbitmq_host))
+channel = connection.channel()
 
 
 @asynccontextmanager
@@ -41,6 +51,24 @@ app.mount("/views", StaticFiles(directory="views"), name="views")
 @app.get("/")
 async def read_index():
     return FileResponse('panel.html')
+
+
+@app.post("/generate_code/")
+async def generate_code(prompt: str):
+    # Generate code as before
+
+    # Publish the generated code to RabbitMQ
+    channel.queue_declare(queue=rabbitmq_queue)
+    channel.basic_publish(
+        exchange='',  # Use a direct exchange
+        routing_key=rabbitmq_queue,
+        body=json.dumps({"prompt": prompt}),
+    )
+
+    # Close the connection
+    connection.close()
+
+    return {"message": "Code generation request sent to RabbitMQ."}
 
 
 @app.get("/add")

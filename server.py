@@ -20,7 +20,7 @@ rabbitmq_queue = 'code_generation_requests'
 credentials = pika.PlainCredentials("codegen_user", "codegen_pass")
 # Create a connection to RabbitMQ
 connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host=rabbitmq_host))
+    pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials))
 channel = connection.channel()
 
 

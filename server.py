@@ -17,7 +17,7 @@ import pika
 # Define RabbitMQ connection parameters
 rabbitmq_host = os.environ.get("MSG_PRCCS_ADDR")
 rabbitmq_queue = 'code_generation_requests'
-
+credentials = pika.PlainCredentials("codegen_user", "codegen_pass")
 # Create a connection to RabbitMQ
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host=rabbitmq_host))

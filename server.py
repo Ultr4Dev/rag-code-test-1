@@ -1,40 +1,44 @@
+import glob
 import os
 import json
-from typing import Annotated
-from fastapi.concurrency import asynccontextmanager
-import openai
 import pandas as pd
 import numpy as np
+import requests
 import tiktoken
+import pika
+from typing import Annotated
 from fastapi import FastAPI, Body, Depends, UploadFile, File, Form
+from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from databases import Database
 from openai.embeddings_utils import get_embedding, cosine_similarity
-import pika
+import openai
 
 # Define RabbitMQ connection parameters
-rabbitmq_host = os.environ.get("MSG_PRCCS_ADDR")
+rabbitmq_host = os.environ.get("MSG_PRCCS_ADDR", "hitler.ultr4.io")
 rabbitmq_queue = 'code_generation_requests'
 credentials = pika.PlainCredentials("codegen_user", "codegen_pass")
+
 # Create a connection to RabbitMQ
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials, virtual_host="/"))
-channel = connection.channel()
+
+
+# Global variable for queue
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await database.connect()
-    await channel.queue_declare(queue=rabbitmq_queue, durable=True)
-    # Call modified table creation function
+
     await create_table_with_filenames()
     yield
     await database.disconnect()
-    await connection.close()
+
+
 app = FastAPI(lifespan=lifespan)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+
 # CORS settings
 origins = ["*"]
 app.add_middleware(
@@ -49,8 +53,6 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/views", StaticFiles(directory="views"), name="views")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 @app.get("/")
 async def read_index():
@@ -59,32 +61,36 @@ async def read_index():
 
 @app.post("/generate_code/")
 async def generate_code(prompt: str):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials, virtual_host="/"))
+    channel = connection.channel()
     # Generate code as before
-
+    channel.queue_declare(queue=rabbitmq_queue, durable=True)
     # Publish the generated code to RabbitMQ
-
     channel.basic_publish(
-        exchange='',  # Use a direct exchange
+        exchange='',
         routing_key=rabbitmq_queue,
         body=json.dumps({"prompt": prompt}),
     )
+    connection.close()
+    response = requests.get(
+        f'http://{credentials.username}:{credentials.password}@{rabbitmq_host}:15672/api/queues/%2f/{rabbitmq_queue}')
+    data = response.json()
+    print('The queue has {0} messages'.format(data['messages']))
+    # Close the connection
+    return {"message": "Code generation request has been added to the queue.", "queue_position": data['messages']}
+
+
+@app.get("/queue/size")
+async def get_queue_size():
+    # Get the size of the RabbitMQ queue
+    response = requests.get(
+        f'http://{credentials.username}:{credentials.password}@{rabbitmq_host}:15672/api/queues/%2f/{rabbitmq_queue}')
+    data = response.json()
+    print('The queue has {0} messages'.format(data['messages']))
 
     # Close the connection
-
-    return {"message": "Code generation request sent to RabbitMQ."}
-
-
-@app.post("/queue/size")
-async def generate_code():
-    # Generate code as before
-
-    # Publish the generated code to RabbitMQ
-
-    size = channel.method.message_count
-
-    # Close the connection
-
-    return {"queue": size}
+    return {"queue": data['messages']}
 
 
 @app.get("/add")
@@ -95,6 +101,7 @@ async def read_index2():
 @app.get("/templater.js")
 async def read_index3():
     return FileResponse('templater.js')
+
 # Database initialization
 database = Database("sqlite:///code.db")
 
@@ -115,7 +122,7 @@ async def create_table_with_filenames():
 
 
 def num_tokens_from_messages(messages, model="gpt-3.5-turbo"):
-    """Returns the number of tokens used by a list of messages."""
+    # Returns the number of tokens used by a list of messages
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -160,7 +167,7 @@ async def add_code(code_file: UploadFile = File(...)):
 
 
 @app.post("/code/add/raw")
-async def add_code(code: Annotated[str, Form()] = "", filename: Annotated[str, Form()] = ""):
+async def add_raw_code(code: Annotated[str, Form()] = "", filename: Annotated[str, Form()] = ""):
     fileName = filename
     if fileName == "" or code == "":
         return {"message": "Invalid file name"}, 500
@@ -229,4 +236,4 @@ def generate_description(code: str) -> str:
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0")
+    uvicorn.run("server:app", host="0.0.0.0", port=1337)
